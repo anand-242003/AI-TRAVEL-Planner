@@ -1,46 +1,58 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-export default function TripDetails() {
-  const { state } = useLocation();
-  const tripData = state?.tripData;
+function TripDetails() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tripData = location.state?.tripData;
 
+  // If no trip data is available, redirect to /create-trip
   if (!tripData) {
-    return <div>No trip data available</div>;
+    navigate('/create-trip');
+    return null;
+  }
+
+  let parsedTripData;
+  try {
+    parsedTripData = typeof tripData === 'string' ? JSON.parse(tripData) : tripData;
+  } catch (error) {
+    console.error('Error parsing tripData:', error);
+    navigate('/create-trip'); // Redirect if parsing fails
+    return null;
+  }
+
+  // Additional check to ensure parsedTripData is an object with required properties
+  if (!parsedTripData || typeof parsedTripData !== 'object' || !parsedTripData.location) {
+    navigate('/create-trip');
+    return null;
   }
 
   return (
-    <div className="trip-details-container">
-      <h2>Trip to {tripData.tripDetails.location}</h2>
-      <p>Duration: {tripData.tripDetails.duration}</p>
-      <p>Budget: {tripData.tripDetails.budget}</p>
-      <p>Travelers: {tripData.tripDetails.travelers}</p>
-
-      <h3>Hotel Options</h3>
+    <div>
+      <h1>Trip Details for {parsedTripData.location}</h1>
+      <h2>Duration: {parsedTripData.days} Days</h2>
+      <h3>Hotels</h3>
       <ul>
-        {tripData.hotelOptions.map((hotel, index) => (
+        {parsedTripData.hotels?.map((hotel, index) => (
           <li key={index}>
-            <h4>{hotel.hotelName}</h4>
-            <p>Address: {hotel.hotelAddress}</p>
-            <p>Price: {hotel.price}</p>
-            <p>Rating: {hotel.rating}</p>
+            <strong>{hotel.hotelName}</strong> - ${hotel.price} - Rating: {hotel.rating}
             <p>{hotel.description}</p>
+            <p>Address: {hotel.hotelAddress}</p>
+            <img src={hotel.hotelImageUrl} alt={hotel.hotelName} style={{ width: '200px' }} />
           </li>
         ))}
       </ul>
-
       <h3>Itinerary</h3>
-      {tripData.itinerary.map((day, index) => (
-        <div key={index}>
-          <h4>Day {day.day} ({day.bestTimeToVisit})</h4>
+      {parsedTripData.itinerary?.map((day, dayIndex) => (
+        <div key={dayIndex}>
+          <h4>Day {day.day}</h4>
           <ul>
-            {day.plan.map((place, placeIndex) => (
+            {day.places?.map((place, placeIndex) => (
               <li key={placeIndex}>
-                <h5>{place.placeName}</h5>
+                <strong>{place.placeName}</strong> - ${place.ticketPricing} - Rating: {place.rating}
                 <p>{place.placeDetails}</p>
-                <p>Ticket Pricing: {place.ticketPricing}</p>
-                <p>Rating: {place.rating}</p>
-                <p>Time to Spend: {place.timeTravel}</p>
+                <p>Time to Travel: {place.timeToTravel}</p>
+                <img src={place.placeImageUrl} alt={place.placeName} style={{ width: '200px' }} />
               </li>
             ))}
           </ul>
@@ -49,3 +61,5 @@ export default function TripDetails() {
     </div>
   );
 }
+
+export default TripDetails;
