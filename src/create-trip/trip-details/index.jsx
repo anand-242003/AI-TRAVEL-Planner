@@ -4,25 +4,38 @@ import { useLocation, useNavigate } from 'react-router-dom';
 function TripDetails() {
   const location = useLocation();
   const navigate = useNavigate();
-  const tripData = location.state?.tripData;
+  let tripData = location.state?.tripData;
 
-  // If no trip data is available, redirect to /create-trip
+  // Fallback: Try loading from localStorage
   if (!tripData) {
-    navigate('/create-trip');
-    return null;
+    const storedTripData = localStorage.getItem('tripData');
+    if (storedTripData) {
+      tripData = storedTripData;
+    } else {
+      navigate('/create-trip');
+      return null;
+    }
   }
 
+  // Parse data if needed
   let parsedTripData;
   try {
     parsedTripData = typeof tripData === 'string' ? JSON.parse(tripData) : tripData;
   } catch (error) {
-    console.error('Error parsing tripData:', error);
-    navigate('/create-trip'); // Redirect if parsing fails
+    console.error('Failed to parse tripData:', error);
+    navigate('/create-trip');
     return null;
   }
 
-  // Additional check to ensure parsedTripData is an object with required properties
-  if (!parsedTripData || typeof parsedTripData !== 'object' || !parsedTripData.location) {
+  // Validate structure
+  if (
+    !parsedTripData ||
+    typeof parsedTripData !== 'object' ||
+    !parsedTripData.location ||
+    !Array.isArray(parsedTripData.hotels) ||
+    !Array.isArray(parsedTripData.itinerary)
+  ) {
+    console.error('Invalid trip data:', parsedTripData);
     navigate('/create-trip');
     return null;
   }
@@ -31,33 +44,59 @@ function TripDetails() {
     <div>
       <h1>Trip Details for {parsedTripData.location}</h1>
       <h2>Duration: {parsedTripData.days} Days</h2>
+
       <h3>Hotels</h3>
       <ul>
-        {parsedTripData.hotels?.map((hotel, index) => (
-          <li key={index}>
-            <strong>{hotel.hotelName}</strong> - ${hotel.price} - Rating: {hotel.rating}
-            <p>{hotel.description}</p>
-            <p>Address: {hotel.hotelAddress}</p>
-            <img src={hotel.hotelImageUrl} alt={hotel.hotelName} style={{ width: '200px' }} />
-          </li>
-        ))}
+        {parsedTripData.hotels.length > 0 ? (
+          parsedTripData.hotels.map((hotel, index) => (
+            <li key={index}>
+              <strong>{hotel.hotelName}</strong> - ₹{hotel.price} - Rating: {hotel.rating}
+              <p>{hotel.description}</p>
+              <p>Address: {hotel.hotelAddress}</p>
+              <img
+                src={hotel.hotelImageUrl}
+                alt={hotel.hotelName}
+                style={{ width: '200px', borderRadius: '8px', marginTop: '5px' }}
+              />
+            </li>
+          ))
+        ) : (
+          <li>No hotels available.</li>
+        )}
       </ul>
+
       <h3>Itinerary</h3>
-      {parsedTripData.itinerary?.map((day, dayIndex) => (
-        <div key={dayIndex}>
-          <h4>Day {day.day}</h4>
-          <ul>
-            {day.places?.map((place, placeIndex) => (
-              <li key={placeIndex}>
-                <strong>{place.placeName}</strong> - ${place.ticketPricing} - Rating: {place.rating}
-                <p>{place.placeDetails}</p>
-                <p>Time to Travel: {place.timeToTravel}</p>
-                <img src={place.placeImageUrl} alt={place.placeName} style={{ width: '200px' }} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {parsedTripData.itinerary.length > 0 ? (
+        parsedTripData.itinerary.map((day, dayIndex) => (
+          <div key={dayIndex}>
+            <h4>Day {day.day}</h4>
+            <ul>
+              {Array.isArray(day.places) && day.places.length > 0 ? (
+                day.places.map((place, placeIndex) => (
+                  <li key={placeIndex}>
+                    <strong>{place.placeName}</strong> - ₹{place.ticketPricing} - Rating: {place.rating}
+                    <p>{place.placeDetails}</p>
+                    <p>Time to Travel: {place.timeToTravel}</p>
+                    <img
+                      src={place.placeImageUrl}
+                      alt={place.placeName}
+                      style={{ width: '200px', borderRadius: '8px', marginTop: '5px' }}
+                    />
+                  </li>
+                ))
+              ) : (
+                <li>No places available for this day.</li>
+              )}
+            </ul>
+          </div>
+        ))
+      ) : (
+        <p>No itinerary available.</p>
+      )}
+
+      {parsedTripData.bestTimeToVisit && (
+        <h4 style={{ marginTop: '20px' }}>Best Time to Visit: {parsedTripData.bestTimeToVisit}</h4>
+      )}
     </div>
   );
 }
